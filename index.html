@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teachable Machine - Drag & Drop</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    #drop-zone {
+      border: 3px dashed #888;
+      border-radius: 10px;
+      padding: 40px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #drop-zone.dragover { background: #f0f0f0; }
+    #preview { max-width: 300px; margin-top: 20px; }
+    #label-container { font-size: 24px; margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Cat Classifier</h2>
+  <div id="drop-zone">📁 Drag & drop an image here or click to choose</div>
+  <input type="file" id="file-input" accept="image/*" style="display:none;" />
+  <img id="preview" alt="Preview" />
+  <div id="label-container">Waiting...</div>
+
+  <!-- TensorFlow.js and Teachable Machine -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <script>
+    const MODEL_URL = "cat_model/"; // model folder
+    let model;
+
+    // Load model
+    (async () => {
+      model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+      console.log("✅ Model loaded");
+    })();
+
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const preview = document.getElementById("preview");
+    const labelContainer = document.getElementById("label-container");
+
+    // Drag & drop
+    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    // File input
+    fileInput.addEventListener("change", (e) => handleFile(e.target.files[0]));
+
+    async function handleFile(file) {
+      if (!file) return;
+      const imgURL = window.URL.createObjectURL(file);
+      preview.src = imgURL;
+      preview.onload = async () => {
+        const prediction = await model.predict(preview);
+        let highest = prediction[0];
+        for (let i = 1; i < prediction.length; i++) {
+          if (prediction[i].probability > highest.probability) highest = prediction[i];
+        }
+        labelContainer.textContent = highest.className;
+        console.log(prediction);
+      };
+    }
+  </script>
+</body>
+</html>
